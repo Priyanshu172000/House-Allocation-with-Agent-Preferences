@@ -107,8 +107,8 @@ void makeTradeInFree(vector<int> &matchA, vector<int> &matchH, const Graph &grap
         if (matchA[a] != 0)
         {
             int h = matchA[a];
-            prefLists[h].push_back({a, curRank[a]});
             curRank[a] = find(graph.adj[a].begin(), graph.adj[a].end(), h) - graph.adj[a].begin();
+            prefLists[h].push_back({a, curRank[a]});
         }
     }
 
