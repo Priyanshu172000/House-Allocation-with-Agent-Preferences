@@ -1,4 +1,4 @@
-#include <iostream>
+#include <bits/stdc++.h>
 #include <vector>
 #include <queue>
 #include <unordered_map>
@@ -145,44 +145,65 @@ void makeTradeInFree(vector<int> &matchA, vector<int> &matchH, const Graph &grap
 }
 
 // Phase 3: Remove coalitions using Top Trading Cycles Method
-void makeCoalitionFree(vector<int> &matchA, vector<int> &matchH, const Graph &graph)
-{
-    vector<bool> labeled(graph.numHouses + 1, false);
-    vector<int> pointers(graph.numAgents + 1, 0);
-    queue<int> cycleQueue;
+void makeCoalitionFree(vector<int>& matchA, vector<int>& matchH, const Graph& graph) {
+    vector<int> ptr(graph.numAgents + 1, 0); // Tracks the next preference for each agent
+    bool improved;
 
-    for (int a = 1; a <= graph.numAgents; ++a)
-    {
-        if (matchA[a] != 0)
-        {
-            cycleQueue.push(a);
-        }
-    }
+    do {
+        improved = false;
+        vector<bool> visitedAgent(graph.numAgents + 1, false);
+        vector<bool> visitedHouse(graph.numHouses + 1, false);
 
-    while (!cycleQueue.empty())
-    {
-        int a = cycleQueue.front();
-        cycleQueue.pop();
+        for (int a = 1; a <= graph.numAgents; ++a) {
+            // Skip if agent is unmatched or already visited
+            if (matchA[a] == 0 || visitedAgent[a]) continue;
 
-        int h = graph.adj[a][pointers[a]];
-        while (labeled[h] && pointers[a] < graph.adj[a].size())
-        {
-            h = graph.adj[a][++pointers[a]];
-        }
+            vector<int> cycleAgents, cycleHouses;
+            int currentAgent = a;
 
-        if (!labeled[h])
-        {
-            matchA[a] = h;
-            matchH[h] = a;
-            labeled[h] = true;
+            // Detect a cycle among matched agents
+            while (true) {
+                if (visitedAgent[currentAgent]) break;
+                visitedAgent[currentAgent] = true;
+
+                // Find the next preferred house not owned by the current agent
+                int nextHouse = -1;
+                while (ptr[currentAgent] > graph.adj[currentAgent].size()) {
+                    nextHouse = graph.adj[currentAgent][ptr[currentAgent]++];
+                    if (nextHouse != matchA[currentAgent] && !visitedHouse[nextHouse]) {
+                        break;
+                    }
+                }
+                if (nextHouse == -1) break;
+
+                cycleAgents.push_back(currentAgent);
+                cycleHouses.push_back(nextHouse);
+                visitedHouse[nextHouse] = true;
+
+                // Move to the owner of the next house (if matched)
+                currentAgent = matchH[nextHouse];
+                if (currentAgent == 0) break; // Skip if house is unassigned
+            }
+
+            // Execute the cycle if it's valid (size > 1)
+            if (cycleAgents.size() > 1) {
+                improved = true;
+                // Unassign all agents in the cycle from their current houses
+                for (int agent : cycleAgents) {
+                    if (matchA[agent] != 0) {
+                        matchH[matchA[agent]] = 0;
+                    }
+                }
+                // Assign new houses in the cycle
+                for (size_t i = 0; i < cycleAgents.size(); ++i) {
+                    int agent = cycleAgents[i];
+                    int house = cycleHouses[i];
+                    matchA[agent] = house;
+                    matchH[house] = agent;
+                }
+            }
         }
-        else
-        {
-            int b = matchH[h];
-            matchA[b] = 0;
-            cycleQueue.push(b);
-        }
-    }
+    } while (improved); // Repeat until no more improvements
 }
 
 // Main function to execute the algorithm
